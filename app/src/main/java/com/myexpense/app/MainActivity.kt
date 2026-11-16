@@ -71,16 +71,6 @@ abstract class MoneyDb : RoomDatabase() {
     }
 }
 
-class MoneyModel(private val dao: MoneyDao) {
-    val rows = dao.all().stateIn(kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main), SharingStarted.WhileSubscribed(5000), emptyList())
-    val balance = dao.balance().stateIn(kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main), SharingStarted.WhileSubscribed(5000), 0.0)
-    val income = dao.income().stateIn(kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main), SharingStarted.WhileSubscribed(5000), 0.0)
-    val expense = dao.expense().stateIn(kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main), SharingStarted.WhileSubscribed(5000), 0.0)
-    suspend fun add(title: String, amount: Double, type: String, category: String) {
-        if (title.isNotBlank() && amount > 0 && amount.isFinite()) dao.insert(MoneyTransaction(title=title.trim(), amount=amount, type=type, category=category))
-    }
-}
-
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -93,11 +83,10 @@ private val Mint = Color(0xFFB9F5D5)
 
 @Composable
 fun ExpenseHome(dao: MoneyDao) {
-    val model = remember(dao) { MoneyModel(dao) }
-    val rows by model.rows.collectAsState()
-    val balance by model.balance.collectAsState()
-    val income by model.income.collectAsState()
-    val expense by model.expense.collectAsState()
+    val rows by dao.all().collectAsState(initial = emptyList())
+    val balance by dao.balance().collectAsState(initial = 0.0)
+    val income by dao.income().collectAsState(initial = 0.0)
+    val expense by dao.expense().collectAsState(initial = 0.0)
     val scope = rememberCoroutineScope()
     var showAdd by remember { mutableStateOf(false) }
     var dark by remember { mutableStateOf(false) }
@@ -166,7 +155,11 @@ fun ExpenseHome(dao: MoneyDao) {
             }
         }
         if(showAdd) AddDialog({showAdd=false}) { title,amount,type,category ->
-            scope.launch { model.add(title,amount,type,category) }
+            scope.launch {
+                if (title.isNotBlank() && amount > 0.0 && amount.isFinite()) {
+                    dao.insert(MoneyTransaction(title=title.trim(), amount=amount, type=type, category=category))
+                }
+            }
             showAdd=false
         }
     }
