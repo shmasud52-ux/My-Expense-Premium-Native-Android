@@ -47,12 +47,12 @@ data class AppSetting(@PrimaryKey val settingKey:String,val value:String)
  @Query("SELECT * FROM app_settings WHERE settingKey=:key LIMIT 1") fun setting(key:String):Flow<AppSetting?>
  @Insert(onConflict=OnConflictStrategy.REPLACE) suspend fun setSetting(item:AppSetting)
 }
-@Database(entities=[MoneyTransaction::class,AppSetting::class],version=1,exportSchema=true)
+@Database(entities=[MoneyTransaction::class,AppSetting::class],version=2,exportSchema=true)
 abstract class MoneyDb:RoomDatabase(){
  abstract fun dao():MoneyDao
  companion object{
   @Volatile private var instance:MoneyDb?=null
-  fun get(c:android.content.Context):MoneyDb=instance?: synchronized(this){instance?:Room.databaseBuilder(c.applicationContext,MoneyDb::class.java,"myexpense.db").build().also{instance=it}}
+  fun get(c:android.content.Context):MoneyDb=instance?: synchronized(this){instance?:Room.databaseBuilder(c.applicationContext,MoneyDb::class.java,"myexpense.db").fallbackToDestructiveMigration().build().also{instance=it}}
  }
 }
 class MainActivity:ComponentActivity(){
